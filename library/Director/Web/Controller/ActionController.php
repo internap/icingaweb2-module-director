@@ -128,6 +128,12 @@ abstract class ActionController extends Controller
                 'label' => $this->translate('Data fields'),
                 'url'   => 'director/data/fields'
             )
+        )->add(
+            'dictionary',
+            array(
+                'label' => $this->translate('Dictionaries'),
+                'url'   => 'director/data/dictionaries'
+            )
         );
         return $this->view->tabs;
     }
