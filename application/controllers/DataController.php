@@ -171,6 +171,113 @@ class DataController extends ActionController
         $this->setViewScript('objects/table');
     }
 
+    public function dictionariesAction() {
+        $this->view->addLink = $this->view->qlink(
+            $this->translate('Add Dictionary'),
+            'director/data/dictionary',
+            null,
+            array('class' => 'icon-plus')
+        );
+
+        $this->setDataTabs()->activate('dictionary');
+        $this->view->title = $this->translate('Dictionaries');
+        $this->prepareAndRenderTable('dictionary');
+    }
+
+    public function dictionaryAction() {
+        $this->view->stayHere = true;
+
+        $form = $this->view->form = $this->loadForm('directorDictionary')
+            ->setSuccessUrl('director/data/dictionaries')
+            ->setDb($this->db());
+
+        if ($id = $this->getRequest()->getUrl()->shift('id')) {
+            $form->loadObject($id);
+            $this->view->title = sprintf(
+                $this->translate('Dictionary: %s'),
+                $form->getObject()->dictionary_name
+            );
+
+            $this->view->addLink = $this->view->qlink(
+                $this->translate('back'),
+                'director/data/dictionary',
+                null,
+                array('class' => 'icon-left-big')
+            );
+
+
+            $this->getTabs()->add('editdictionary', array(
+                'url'       => 'director/data/dictionary' . '?id=' . $id,
+                'label'     => $this->translate('Edit dictionary'),
+            ))->activate('editdictionary');
+
+        } else {
+            $this->view->title = $this->translate('Add dictionary');
+
+            $this->getTabs()->add('adddictionary', array(
+                'url'       => 'director/data/dictionary',
+                'label'     => $this->view->title,
+            ))->activate('adddictionary');
+        }
+
+        $form->handleRequest();
+        $this->setViewScript('object/form');
+    }
+
+    public function dictionaryfieldsAction() {
+        $this->view->addLink = $this->view->qlink(
+            $this->translate('Add Dictionary Field'),
+            'director/data/dictionaryfield',
+            null,
+            array('class' => 'icon-plus')
+        );
+
+        $this->setDataTabs()->activate('dictionaryfield');
+        $this->view->title = $this->translate('Dictionary Fields');
+        $this->prepareAndRenderTable('dictionaryfield');
+    }
+
+    public function dictionaryfieldAction() {
+        $this->view->stayHere = true;
+
+        $form = $this->view->form = $this->loadForm('directorDictionaryfield')
+            ->setSuccessUrl('director/data/dictionaryfields')
+            ->setDb($this->db());
+
+        if (($dictionary_id = $this->getRequest()->getUrl()->shift('dictionary_id')) &&
+            ($datafield_id = $this->getRequest()->getUrl()->shift('datafield_id'))) {
+            $form->loadObject(array('dictionary_id'=>$dictionary_id, 'datafield_id'=>$datafield_id));
+            $this->view->title = sprintf(
+                $this->translate('Dictionary Field: %s'),
+                $form->getObject()->dictionary_field_name
+            );
+
+            $this->view->addLink = $this->view->qlink(
+                $this->translate('back'),
+                'director/data/dictionaryfield',
+                null,
+                array('class' => 'icon-left-big')
+            );
+
+
+            $this->getTabs()->add('editdictionaryfield', array(
+                'url'       => 'director/data/dictionaryfield' . '?dictionary_id=' . $dictionary_id . '&datafield_id=' . $datafield_id,
+                'label'     => $this->translate('Edit dictionary field'),
+            ))->activate('editdictionaryfield');
+
+        } else {
+            $this->view->title = $this->translate('Add dictionary field');
+
+            $this->getTabs()->add('adddictionaryfield', array(
+                'url'       => 'director/data/dictionaryfield',
+                'label'     => $this->view->title,
+            ))->activate('adddictionaryfield');
+        }
+
+        $form->handleRequest();
+        $this->setViewScript('object/form');
+    }
+
     protected function prepareTable($name)
     {
         $table = $this->loadTable($name)->setConnection($this->db());
