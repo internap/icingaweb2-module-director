@@ -7,7 +7,7 @@ use Icinga\Module\Director\Web\Table\QuickTable;
 class DictionaryfieldTable extends QuickTable
 {
     protected $searchColumns = array(
-        'dictionary_field_name',
+        'dictionaryfield_name',
     );
 
     public function getColumns()
@@ -15,7 +15,7 @@ class DictionaryfieldTable extends QuickTable
         return array(
             'dictionary_id'         => 'l.dictionary_id',
             'datafield_id'          => 'l.datafield_id',
-            'dictionary_field_name' => 'l.dictionary_field_name',
+            'dictionaryfield_name' => 'l.dictionaryfield_name',
             'is_required'           => 'l.is_required',
             'allow_multiple'        => 'l.allow_multiple',
         );
@@ -36,7 +36,7 @@ class DictionaryfieldTable extends QuickTable
     {
         $view = $this->view();
         return array(
-            'dictionary_field_name' => $view->translate('Dictionary Field Name'),
+            'dictionaryfield_name' => $view->translate('Dictionary Field Name'),
         );
     }
 
@@ -47,7 +47,7 @@ class DictionaryfieldTable extends QuickTable
         $query = $db->select()->from(
             array('l' => 'director_dictionaryfield'),
             array()
-        )->order('dictionary_field_name ASC');
+        )->order('dictionaryfield_name ASC');
 
         return $query;
     }

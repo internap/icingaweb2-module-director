@@ -13,7 +13,7 @@ class DirectorDictionaryfield extends DbObject
     protected $defaultProperties = array(
         'dictionary_id'         => null,
         'datafield_id'          => null,
-        'dictionary_field_name' => null,
+        'dictionaryfield_name' => null,
         'is_required'           => null,
         'allow_multiple'        => null
     );

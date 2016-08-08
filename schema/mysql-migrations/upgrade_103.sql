@@ -8,16 +8,16 @@ CREATE TABLE director_dictionary (
 CREATE TABLE director_dictionaryfield (
   dictionary_id INT(10) UNSIGNED NOT NULL,
   datafield_id INT(10) UNSIGNED NOT NULL,
-  dictionary_field_name VARCHAR(255) NOT NULL,
+  dictionaryfield_name VARCHAR(255) NOT NULL,
   is_required ENUM('y','n') NOT NULL,
   allow_multiple ENUM('y','n') NOT NULL,
   PRIMARY KEY (dictionary_id, datafield_id),
-  CONSTRAINT dictionary_field_dictionary
+  CONSTRAINT dictionaryfield_dictionary
     FOREIGN KEY dictionary (dictionary_id)
     REFERENCES director_dictionary (id)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT dictionary_field_datafield
+  CONSTRAINT dictionaryfield_datafield
   FOREIGN KEY datafield (datafield_id)
   REFERENCES director_datafield (id)
     ON DELETE RESTRICT

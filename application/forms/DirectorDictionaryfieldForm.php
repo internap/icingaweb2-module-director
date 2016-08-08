@@ -9,7 +9,7 @@ class DirectorDictionaryfieldForm extends DirectorObjectForm
 {
     public function setup()
     {
-        $this->addElement('text', 'dictionary_field_name', array(
+        $this->addElement('text', 'dictionaryfield_name', array(
             'label'       => $this->translate('Name'),
             'description' => $this->translate(
                 'poop'
@@ -43,7 +43,7 @@ class DirectorDictionaryfieldForm extends DirectorObjectForm
             $this->translate('Whether to the field is an array of xxx')
         );
         
-        $this->addSimpleDisplayGroup(array('dictionary_field_name', 'dictionary_id', 'datafield_id', 'is_required', 'allow_multiple'),
+        $this->addSimpleDisplayGroup(array('dictionaryfield_name', 'dictionary_id', 'datafield_id', 'is_required', 'allow_multiple'),
             'dictionaryfield', array(
             'legend' => $this->translate('Dictionary Field')
         ));

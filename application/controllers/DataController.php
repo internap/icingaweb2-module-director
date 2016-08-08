@@ -249,7 +249,7 @@ class DataController extends ActionController
             $form->loadObject(array('dictionary_id'=>$dictionary_id, 'datafield_id'=>$datafield_id));
             $this->view->title = sprintf(
                 $this->translate('Dictionary Field: %s'),
-                $form->getObject()->dictionary_field_name
+                $form->getObject()->dictionaryfield_name
             );
 
             $this->view->addLink = $this->view->qlink(
