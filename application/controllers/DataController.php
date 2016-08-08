@@ -244,9 +244,8 @@ class DataController extends ActionController
             ->setSuccessUrl('director/data/dictionaryfields')
             ->setDb($this->db());
 
-        if (($dictionary_id = $this->getRequest()->getUrl()->shift('dictionary_id')) &&
-            ($datafield_id = $this->getRequest()->getUrl()->shift('datafield_id'))) {
-            $form->loadObject(array('dictionary_id'=>$dictionary_id, 'datafield_id'=>$datafield_id));
+        if ($dictionaryfield_id = $this->getRequest()->getUrl()->shift('id')) {
+            $form->loadObject($dictionaryfield_id);
             $this->view->title = sprintf(
                 $this->translate('Dictionary Field: %s'),
                 $form->getObject()->dictionaryfield_name
@@ -261,7 +260,7 @@ class DataController extends ActionController
 
 
             $this->getTabs()->add('editdictionaryfield', array(
-                'url'       => 'director/data/dictionaryfield' . '?dictionary_id=' . $dictionary_id . '&datafield_id=' . $datafield_id,
+                'url'       => 'director/data/dictionaryfield' . '?id=' . $dictionaryfield_id,
                 'label'     => $this->translate('Edit dictionary field'),
             ))->activate('editdictionaryfield');
 

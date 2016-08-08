@@ -13,9 +13,10 @@ class DictionaryfieldTable extends QuickTable
     public function getColumns()
     {
         return array(
+            'id'                    => 'l.id',
             'dictionary_id'         => 'l.dictionary_id',
             'datafield_id'          => 'l.datafield_id',
-            'dictionaryfield_name' => 'l.dictionaryfield_name',
+            'dictionaryfield_name'  => 'l.dictionaryfield_name',
             'is_required'           => 'l.is_required',
             'allow_multiple'        => 'l.allow_multiple',
         );
@@ -26,8 +27,7 @@ class DictionaryfieldTable extends QuickTable
         return $this->url(
             'director/data/dictionaryfield',
             array(
-                'dictionary_id' => $row->dictionary_id,
-                'datafield_id' => $row->datafield_id,
+                'id' => $row->id
             )
         );
     }
