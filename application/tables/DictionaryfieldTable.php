@@ -37,6 +37,7 @@ class DictionaryfieldTable extends QuickTable
         $view = $this->view();
         return array(
             'dictionaryfield_name' => $view->translate('Dictionary Field Name'),
+            //TODO: add related datafield value and dictionary name
         );
     }
 
