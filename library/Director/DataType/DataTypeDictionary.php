@@ -11,7 +11,7 @@ class DataTypeDictionary extends DataTypeHook
     {
         $defaultValue = $this->getDefaultValue($this->getSetting('dictionary_id'), $form->getDb()->getDbAdapter());
 
-        $element =$form->createElement('dictionary', $name, array(
+        $element = $form->createElement('dictionary', $name, array(
             'label'       => 'DB Query',
             'rows'        => 5,
         ));
