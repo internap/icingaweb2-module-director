@@ -9,7 +9,7 @@ class DataTypeDictionary extends DataTypeHook
 {
     public function getFormElement($name, QuickForm $form)
     {
-        $defaultValue = $this->getDefaultValue($this->getSetting('dictionary_id'), $form->getDb()->getDbAdapter());
+        $defaultValue = $this->getDefaultValue($this->getSetting('reference_id'), $form->getDb()->getDbAdapter());
 
         $element = $form->createElement('dictionary', $name, array(
             'label'       => 'DB Query',
@@ -29,7 +29,6 @@ class DataTypeDictionary extends DataTypeHook
     protected function getDefaultValue($dictionary_id, $db)
     {
         $result = array();
-
         $select = $db->select()
             ->from(array('df' => 'director_dictionary_field'),
                 array(
@@ -60,7 +59,7 @@ class DataTypeDictionary extends DataTypeHook
             case 'Icinga\Module\Director\DataType\DataTypeString':
                 return "";
             case 'Icinga\Module\Director\DataType\DataTypeDictionary':
-                if ($field->setting_name === 'dictionary_id' && $field->setting_value) {
+                if ($field->setting_name === 'reference_id' && $field->setting_value) {
                     return $this->getDefaultValue($field->setting_value, $db);
                 }
                 return null;
@@ -73,7 +72,7 @@ class DataTypeDictionary extends DataTypeHook
     {
         $db = $form->getDb();
 
-        $form->addElement('select', 'dictionary_id', array(
+        $form->addElement('select', 'reference_id', array(
             'label'    => 'Dictionary name',
             'required' => true,
             'multiOptions' => array(null => '- please choose -') +
