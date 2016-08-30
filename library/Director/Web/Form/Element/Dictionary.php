@@ -15,17 +15,28 @@ class Dictionary extends FormElement
         return $this->validateNode($this->structure, $value);
     }
 
-    protected function validateNode($structure, $value)
+    protected function validateNode($structure, $value, $keyPrefix = '')
     {
         if ($value === null) {
             return true;
         }
         foreach ($structure as $key => $node) {
-            if (!key_exists($key, $value)) {
-                $this->addError(sprintf("Key '%s' is missing", $key));
+            $fullKey = $keyPrefix . $key;
+
+            if ( ! key_exists($key, $value)) {
+                $this->addError(sprintf("Key '%s' is missing", $fullKey));
                 return false;
-            } elseif (is_array($value[$key]) && !$this->validateNode($node, $value[$key])) {
-                $this->addError(sprintf("Value for key %s: '%value%' is invalid", $key));
+            }
+
+            if (is_array($value[$key]) && ! $this->validateNode($node, $value[$key], $key . '.')) {
+                return false;
+            }
+
+            $expectedType = gettype($structure[$key]);
+            $currentType = gettype($value[$key]);
+            if ($expectedType !== $currentType) {
+                $this->addError(sprintf("Type mismatch, '%s' is expected to be a '%s', '%s' given",
+                    $fullKey, $expectedType, $currentType));
                 return false;
             }
         }
