@@ -19,6 +19,10 @@ class DictionaryTest extends BaseTestCase
             'key_one' => 0,
             'key_two' => ''
         ]);
+        $this->dictionaryInstance->setFieldSettingsMap([
+            'key_one' => ['is_required' => true],
+            'key_two' => ['is_required' => true],
+        ]);
 
         $this->dictionaryInstance->isValid([
             'key_one' => 42,
@@ -33,6 +37,11 @@ class DictionaryTest extends BaseTestCase
             'key_one' => 0,
             'key_two' => '',
             'key_three' => ''
+        ]);
+        $this->dictionaryInstance->setFieldSettingsMap([
+            'key_one' => ['is_required' => true],
+            'key_two' => ['is_required' => true],
+            'key_three' => ['is_required' => true],
         ]);
 
         $this->dictionaryInstance->isValid([
@@ -53,6 +62,11 @@ class DictionaryTest extends BaseTestCase
                 'sub_key_one' => ''
             ]
         ]);
+        $this->dictionaryInstance->setFieldSettingsMap([
+            'key_one' => ['is_required' => true],
+            'key_two' => ['is_required' => true],
+            'key_two.sub_key_one' => ['is_required' => true],
+        ]);
 
         $this->dictionaryInstance->isValid([
             'key_one' => 0,
@@ -68,6 +82,9 @@ class DictionaryTest extends BaseTestCase
     public function testDictionaryWithKeyTypeMismatch() {
         $this->dictionaryInstance->setDefaultValue([
             'key_one' => 0
+        ]);
+        $this->dictionaryInstance->setFieldSettingsMap([
+            'key_one' => ['is_required' => true]
         ]);
 
         $this->dictionaryInstance->isValid([
@@ -85,8 +102,55 @@ class DictionaryTest extends BaseTestCase
             'key_one' => 0,
             'key_two' => ''
         ]);
+        $this->dictionaryInstance->setFieldSettingsMap([
+            'key_one' => ['is_required' => true],
+            'key_two' => ['is_required' => true],
+        ]);
 
         $this->dictionaryInstance->isValid('{"key_one" : 42,"key_two" : "foobar"}');
+
+        $this->assertFalse($this->dictionaryInstance->hasErrors());
+    }
+
+    public function testRequiredFieldCantBeNull() {
+        $this->dictionaryInstance->setDefaultValue([
+            'key_one' => [
+                'sub_key_one' => ''
+            ]
+        ]);
+        $this->dictionaryInstance->setFieldSettingsMap([
+            'key_one' => ['is_required' => true],
+            'key_one.sub_key_one' => ['is_required' => true],
+        ]);
+
+        $this->dictionaryInstance->isValid([
+            'key_one' => [
+                'sub_key_one' => null
+            ]
+        ]);
+
+        $this->assertTrue($this->dictionaryInstance->hasErrors());
+        $errors = $this->dictionaryInstance->getMessages();
+        $this->assertEquals(1, count($errors));
+        $this->assertEquals('Key \'key_one.sub_key_one\' is required and cannot be NULL', $errors[0]);
+    }
+
+    public function testNonRequiredFieldCanBeNull() {
+        $this->dictionaryInstance->setDefaultValue([
+            'key_one' => [
+                'sub_key_one' => ''
+            ]
+        ]);
+        $this->dictionaryInstance->setFieldSettingsMap([
+            'key_one' => ['is_required' => true],
+            'key_one.sub_key_one' => ['is_required' => false],
+        ]);
+
+        $this->dictionaryInstance->isValid([
+            'key_one' => [
+                'sub_key_one' => null
+            ]
+        ]);
 
         $this->assertFalse($this->dictionaryInstance->hasErrors());
     }

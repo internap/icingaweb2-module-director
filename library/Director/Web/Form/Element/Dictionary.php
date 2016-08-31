@@ -6,6 +6,7 @@ class Dictionary extends FormElement
 {
     public $helper = 'formDictionary';
     private $structure = null;
+    private $fieldSettingsMap = [];
 
     public function isValid($value, $context = null)
     {
@@ -28,13 +29,18 @@ class Dictionary extends FormElement
                 return false;
             }
 
-            if (is_array($value[$key]) && ! $this->validateNode($node, $value[$key], $key . '.')) {
+            if (is_array($value[$key]) && ! $this->validateNode($node, $value[$key], $fullKey . '.')) {
+                return false;
+            }
+
+            if ($this->fieldSettingsMap[$fullKey]['is_required'] && $value[$key] === null) {
+                $this->addError(sprintf("Key '%s' is required and cannot be NULL", $fullKey));
                 return false;
             }
 
             $expectedType = gettype($structure[$key]);
             $currentType = gettype($value[$key]);
-            if ($expectedType !== $currentType) {
+            if ($expectedType !== $currentType && $value[$key] !== null) {
                 $this->addError(sprintf("Type mismatch, '%s' is expected to be a '%s', '%s' given",
                     $fullKey, $expectedType, $currentType));
                 return false;
@@ -47,6 +53,16 @@ class Dictionary extends FormElement
     {
         $this->structure = $value;
         $this->setValue($value);
+    }
+
+    public function setFieldSettingsMap($fieldSettingsMap)
+    {
+        $this->fieldSettingsMap = $fieldSettingsMap;
+    }
+
+    public function getFieldSettingsMap()
+    {
+        return $this->fieldSettingsMap;
     }
 
     public function setValue($value)

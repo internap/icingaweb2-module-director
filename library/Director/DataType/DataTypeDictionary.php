@@ -7,9 +7,11 @@ use Icinga\Module\Director\Web\Form\QuickForm;
 
 class DataTypeDictionary extends DataTypeHook
 {
+    protected $fieldSettingsMap = [];
+
     public function getFormElement($name, QuickForm $form)
     {
-        $defaultValue = $this->getDefaultValue($this->getSetting('reference_id'), $form->getDb()->getDbAdapter());
+        $defaultValue = $this->getDefaultValueAndSettingsMap($this->getSetting('reference_id'), $form->getDb()->getDbAdapter());
 
         $element = $form->createElement('dictionary', $name, array(
             'label'       => 'DB Query',
@@ -17,6 +19,7 @@ class DataTypeDictionary extends DataTypeHook
         ));
 
         $element->setDefaultValue($defaultValue);
+        $element->setFieldSettingsMap($this->fieldSettingsMap);
 
         return $element;
     }
@@ -26,7 +29,7 @@ class DataTypeDictionary extends DataTypeHook
         return 'json';
     }
 
-    protected function getDefaultValue($dictionary_id, $db)
+    protected function getDefaultValueAndSettingsMap($dictionary_id, $db, $keyPrefix = '')
     {
         $result = array();
         $select = $db->select()
@@ -34,6 +37,7 @@ class DataTypeDictionary extends DataTypeHook
                 array(
                     'varname' => 'df.varname',
                     'datatype' => 'df.datatype',
+                    'is_required' => 'df.is_required',
                     'setting_name' => 'dfs.setting_name',
                     'setting_value' => 'dfs.setting_value'
                 ))
@@ -47,12 +51,16 @@ class DataTypeDictionary extends DataTypeHook
 
 
         foreach ($db->fetchAll($select) as $field) {
-            $result[$field->varname] = $this->getDefaultValueForField($field, $db);
+            $fullKey = $keyPrefix . $field->varname;
+            $this->fieldSettingsMap[$fullKey] = [
+                'is_required' => $field->is_required === 'y'
+            ];
+            $result[$field->varname] = $this->getDefaultValueForField($field, $db, $fullKey);
         }
         return $result;
     }
 
-    protected function getDefaultValueForField($field, $db) {
+    protected function getDefaultValueForField($field, $db, $fullKey) {
         switch ($field->datatype) {
             case 'Icinga\Module\Director\DataType\DataTypeArray':
                 return [];
@@ -62,7 +70,7 @@ class DataTypeDictionary extends DataTypeHook
                 return 0;
             case 'Icinga\Module\Director\DataType\DataTypeDictionary':
                 if ($field->setting_name === 'reference_id' && $field->setting_value) {
-                    return $this->getDefaultValue($field->setting_value, $db);
+                    return $this->getDefaultValueAndSettingsMap($field->setting_value, $db, $fullKey . '.');
                 }
                 return null;
             default:

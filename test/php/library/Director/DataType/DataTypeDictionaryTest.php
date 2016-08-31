@@ -56,6 +56,18 @@ class DataTypeDictionaryTest extends BaseTestCase
         $this->assertEquals('{"foobar-sub-dict":{"foobar-sub-string":""}}', json_encode($element->getValue()));
     }
 
+    public function testGetDictionaryFieldSettingsMap() {
+        $this->havingDictionaryWithRecursion();
+
+        $element = $this->getTestedElement();
+
+        $fieldSettingsMap = $element->getFieldSettingsMap();
+
+        $this->assertEquals(2, count(array_keys($fieldSettingsMap)));
+        $this->assertTrue($fieldSettingsMap['foobar-sub-dict']['is_required']);
+        $this->assertFalse($fieldSettingsMap['foobar-sub-dict.foobar-sub-string']['is_required']);
+    }
+
     private function getTestedElement() {
         $quickForm = new TestQuickForm($this);
         $quickForm->setDb($this->getDb());
@@ -142,7 +154,7 @@ class DataTypeDictionaryTest extends BaseTestCase
             'varname' => 'foobar-sub-dict',
             'caption' => 'FOOBAR SUD DICT',
             'datatype' => 'Icinga\\Module\\Director\\DataType\\DataTypeDictionary',
-            'is_required' => 'n',
+            'is_required' => 'y',
             'allow_multiple' => 'n',
             'reference_id' => $subDictId
         ]);
