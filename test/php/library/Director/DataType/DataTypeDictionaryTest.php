@@ -18,18 +18,22 @@ class DataTypeDictionaryTest extends BaseTestCase
     public function setUp() {
         parent::setUp();
         $this->dataType = new DataTypeDictionary();
+
+        $this->skipForMissingDb();
     }
 
     public function tearDown() {
-        foreach ($this->dictionaryFields as $dictionaryField) {
-            DirectorDictionaryField::load($dictionaryField->getId(), $this->getDb())->delete();
-        }
-        $this->dictionaryFields = [];
+        if ($this->hasDb()) {
+            foreach ($this->dictionaryFields as $dictionaryField) {
+                DirectorDictionaryField::load($dictionaryField->getId(), $this->getDb())->delete();
+            }
+            $this->dictionaryFields = [];
 
-        foreach ($this->dictionaries as $dictionary) {
-            DirectorDictionary::load($dictionary->getId(), $this->getDb())->delete();
+            foreach ($this->dictionaries as $dictionary) {
+                DirectorDictionary::load($dictionary->getId(), $this->getDb())->delete();
+            }
+            $this->dictionaries = [];
         }
-        $this->dictionaries = [];
     }
 
     public function testGetDictionaryFormElementWithoutFields() {

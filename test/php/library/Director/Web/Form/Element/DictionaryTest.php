@@ -39,9 +39,9 @@ class DictionaryTest extends BaseTestCase
             'key_three' => ''
         ]);
         $this->dictionaryInstance->setFieldSettingsMap([
-            'key_one' => ['is_required' => true],
-            'key_two' => ['is_required' => true],
-            'key_three' => ['is_required' => true],
+            'key_one' => ['is_required' => false],
+            'key_two' => ['is_required' => false],
+            'key_three' => ['is_required' => false],
         ]);
 
         $this->dictionaryInstance->isValid([
@@ -65,7 +65,7 @@ class DictionaryTest extends BaseTestCase
         $this->dictionaryInstance->setFieldSettingsMap([
             'key_one' => ['is_required' => true],
             'key_two' => ['is_required' => true],
-            'key_two.sub_key_one' => ['is_required' => true],
+            'key_two.sub_key_one' => ['is_required' => false],
         ]);
 
         $this->dictionaryInstance->isValid([
@@ -84,7 +84,7 @@ class DictionaryTest extends BaseTestCase
             'key_one' => 0
         ]);
         $this->dictionaryInstance->setFieldSettingsMap([
-            'key_one' => ['is_required' => true]
+            'key_one' => ['is_required' => false]
         ]);
 
         $this->dictionaryInstance->isValid([
@@ -103,8 +103,8 @@ class DictionaryTest extends BaseTestCase
             'key_two' => ''
         ]);
         $this->dictionaryInstance->setFieldSettingsMap([
-            'key_one' => ['is_required' => true],
-            'key_two' => ['is_required' => true],
+            'key_one' => ['is_required' => false],
+            'key_two' => ['is_required' => false],
         ]);
 
         $this->dictionaryInstance->isValid('{"key_one" : 42,"key_two" : "foobar"}');
