@@ -12,7 +12,7 @@ CREATE TABLE director_dictionary_field (
   varname VARCHAR(64) NOT NULL,
   caption VARCHAR(255) NOT NULL,
   description TEXT DEFAULT NULL,
-  datatype varchar(255) NOT NULL,
+  datatype VARCHAR(255) NOT NULL,
   format enum ('string', 'json', 'expression'),
   is_required ENUM('y','n') NOT NULL,
   allow_multiple ENUM('y','n') NOT NULL,
