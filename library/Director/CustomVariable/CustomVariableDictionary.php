@@ -46,6 +46,8 @@ class CustomVariableDictionary extends CustomVariable implements Countable
             $new[$key] = self::wantCustomVariable($key, $val);
         }
 
+        $this->deleted = false;
+
         // WTF?
         if ($this->value === $new) {
             return $this;
@@ -91,6 +93,11 @@ class CustomVariableDictionary extends CustomVariable implements Countable
     public function __get($key)
     {
         return $this->value[$key];
+    }
+
+    public function __isset($key)
+    {
+        return array_key_exists($key, $this->value);
     }
 
     public function getInternalValue($key)

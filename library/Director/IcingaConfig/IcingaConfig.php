@@ -457,10 +457,41 @@ class IcingaConfig
             )
         )->prepend(
             "\nconst DirectorStageDir = dirname(dirname(current_filename))\n"
+            . $this->renderHostOverridableVars()
             . $this->renderMagicApplyFor()
         );
 
         return $this;
+    }
+
+    protected function renderHostOverridableVars()
+    {
+        $settings = $this->connection->settings();
+
+        return sprintf(
+            '
+const DirectorOverrideVars = "%s"
+const DirectorOverrideTemplate = "%s"
+
+template Service DirectorOverrideTemplate {
+  /**
+   * Seems that host is missing when used in a service object, works fine for
+   * apply rules
+   */
+  if (! host) {
+    var host = get_host(host_name)
+  }
+
+  if (vars) {
+    vars += host.vars[DirectorOverrideVars][name]
+  } else {
+    vars = host.vars[DirectorOverrideVars][name]
+  }
+}
+',
+            $settings->override_services_varname,
+            $settings->override_services_templatename
+        );
     }
 
     protected function renderMagicApplyFor()
@@ -478,22 +509,22 @@ apply Service for (title => params in host.vars["%s"]) {
   var override = host.vars["%s_vars"][title]
 
   if (typeof(params["templates"]) in [Array, String]) {
-    import params["templates"]
+    for (tpl in params["templates"]) {
+      import tpl
+    }
   } else {
     import title
   }
 
   if (typeof(params.vars) == Dictionary) {
-    vars += params
-  }
-
-  if (typeof(override.vars) == Dictionary) {
-    vars += override.vars
+    vars += params.vars
   }
 
   if (typeof(params["host_name"]) == String) {
     host_name = params["host_name"]
   }
+
+  import DirectorOverrideTemplate
 }
 ',
             $varname,

@@ -38,6 +38,7 @@ class IcingaServiceTest extends BaseTestCase
         $service->display_name = 'Something else';
         $service->host = 'not yet';
         $service->store($db);
+        $service->delete();
     }
 
     public function testAcceptsAssignRules()
@@ -62,7 +63,16 @@ class IcingaServiceTest extends BaseTestCase
 
     public function testAcceptsAndRendersFlatAssignRules()
     {
+        if ($this->skipForMissingDb()) {
+            return;
+        }
+
+        $db = $this->getDb();
+
         $service = $this->service();
+
+        // Service apply rule rendering requires access to settings:
+        $service->setConnection($db);
         $service->object_type = 'apply';
         $service->assignments = array(
             'host.address="127.*"',
@@ -82,7 +92,15 @@ class IcingaServiceTest extends BaseTestCase
 
     public function testAcceptsAndRendersStructuredAssignRules()
     {
+        if ($this->skipForMissingDb()) {
+            return;
+        }
+
+        $db = $this->getDb();
+
         $service = $this->service();
+        // Service apply rule rendering requires access to settings:
+        $service->setConnection($db);
         $service->object_type = 'apply';
         $service->assignments = array(
             'host.address="127.*"',
@@ -114,6 +132,7 @@ class IcingaServiceTest extends BaseTestCase
             'host.address="127.*"',
             'host.vars.env="test"'
         );
+
         $service->store($db);
 
         $service = IcingaService::loadWithAutoIncId($service->id, $db);
@@ -126,6 +145,8 @@ class IcingaServiceTest extends BaseTestCase
             'host.address="127.*"',
             $service->toPlainObject()->assignments['assign'][0]
         );
+
+        $service->delete();
     }
 
     public function testStaysUnmodifiedWhenSameFiltersAreSetInDifferentWays()
@@ -190,6 +211,8 @@ class IcingaServiceTest extends BaseTestCase
             $this->loadRendered('service2'),
             (string) $service
         );
+
+        $service->delete();
     }
 
     public function testRendersToTheCorrectZone()

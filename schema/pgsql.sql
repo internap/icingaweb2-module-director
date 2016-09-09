@@ -704,6 +704,7 @@ CREATE TABLE icinga_service (
   icon_image character varying(255) DEFAULT NULL,
   icon_image_alt character varying(255) DEFAULT NULL,
   use_agent enum_boolean DEFAULT NULL,
+  use_var_overrides enum_boolean DEFAULT NULL,
   PRIMARY KEY (id),
 -- UNIQUE INDEX object_name (object_name, zone_id),
   CONSTRAINT icinga_service_host
@@ -876,6 +877,18 @@ CREATE UNIQUE INDEX hostgroup_inheritance_unique_order ON icinga_hostgroup_inher
 CREATE INDEX hostgroup_inheritance_hostgroup ON icinga_hostgroup_inheritance (hostgroup_id);
 CREATE INDEX hostgroup_inheritance_hostgroup_parent ON icinga_hostgroup_inheritance (parent_hostgroup_id);
 
+CREATE TABLE icinga_hostgroup_assignment (
+  id bigserial,
+  hostgroup_id integer NOT NULL,
+  filter_string TEXT NOT NULL,
+  assign_type enum_assign_type NOT NULL DEFAULT 'assign',
+  PRIMARY KEY (id),
+  CONSTRAINT icinga_hostgroup_assignment
+  FOREIGN KEY (hostgroup_id)
+  REFERENCES icinga_hostgroup (id)
+  ON DELETE CASCADE
+  ON UPDATE CASCADE
+);
 
 CREATE TABLE icinga_servicegroup (
   id serial,
@@ -1260,7 +1273,7 @@ CREATE TABLE import_source (
   key_column character varying(64) NOT NULL,
   provider_class character varying(72) NOT NULL,
   import_state enum_sync_state NOT NULL DEFAULT 'unknown',
-  last_error_message character varying(255) NULL DEFAULT NULL,
+  last_error_message text NULL DEFAULT NULL,
   last_attempt timestamp with time zone NULL DEFAULT NULL,
   PRIMARY KEY (id)
 );
@@ -1412,7 +1425,7 @@ CREATE TABLE sync_rule (
   purge_existing enum_boolean NOT NULL DEFAULT 'n',
   filter_expression text DEFAULT NULL,
   sync_state enum_sync_state NOT NULL DEFAULT 'unknown',
-  last_error_message character varying(255) NULL DEFAULT NULL,
+  last_error_message text NULL DEFAULT NULL,
   last_attempt timestamp with time zone NULL DEFAULT NULL,
   PRIMARY KEY (id)
 );
@@ -1426,7 +1439,7 @@ CREATE TABLE sync_property (
   destination_field character varying(64),
   priority smallint NOT NULL,
   filter_expression text DEFAULT NULL,
-  merge_policy enum_sync_property_merge_policy NOT NULL,
+  merge_policy enum_sync_property_merge_policy DEFAULT NULL,
   PRIMARY KEY (id),
   CONSTRAINT sync_property_rule
   FOREIGN KEY (rule_id)
@@ -1446,7 +1459,7 @@ CREATE INDEX sync_property_source ON sync_property (source_id);
 
 CREATE TABLE sync_run (
   id bigserial,
-  rule_id integer NOT NULL,
+  rule_id integer DEFAULT NULL,
   rule_name character varying(255) NOT NULL,
   start_time TIMESTAMP WITH TIME ZONE NOT NULL,
   duration_ms integer DEFAULT NULL,
@@ -1532,4 +1545,4 @@ CREATE UNIQUE INDEX notification_inheritance ON icinga_notification_inheritance 
 
 INSERT INTO director_schema_migration
   (schema_version, migration_time)
-  VALUES (104, NOW());
+  VALUES (109, NOW());

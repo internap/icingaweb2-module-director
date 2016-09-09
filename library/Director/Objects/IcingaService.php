@@ -2,6 +2,7 @@
 
 namespace Icinga\Module\Director\Objects;
 
+use Icinga\Exception\ProgrammingError;
 use Icinga\Module\Director\IcingaConfig\IcingaConfigHelper as c;
 
 class IcingaService extends IcingaObject
@@ -37,6 +38,7 @@ class IcingaService extends IcingaObject
         'icon_image'            => null,
         'icon_image_alt'        => null,
         'use_agent'             => null,
+        'use_var_overrides'     => null,
     );
 
     protected $relations = array(
@@ -57,6 +59,7 @@ class IcingaService extends IcingaObject
         'enable_perfdata'       => 'enable_perfdata',
         'volatile'              => 'volatile',
         'use_agent'             => 'use_agent',
+        'use_var_overrides'     => 'use_var_overrides',
     );
 
     protected $intervalProperties = array(
@@ -95,6 +98,11 @@ class IcingaService extends IcingaObject
 
         return $this->hasProperty('object_type')
             && $this->object_type === 'apply';
+    }
+
+    public function usesVarOverrides()
+    {
+        return $this->use_var_overrides === 'y';
     }
 
     protected function setKey($key)
@@ -156,6 +164,26 @@ class IcingaService extends IcingaObject
         )->object_type === 'template';
     }
 
+    protected function renderSuffix()
+    {
+        if ($this->isApplyRule() || $this->usesVarOverrides()) {
+            return $this->renderImportHostVarOverrides() . parent::renderSuffix();
+        } else {
+            return parent::renderSuffix();
+        }
+    }
+
+    protected function renderImportHostVarOverrides()
+    {
+        if (! $this->connection) {
+            throw new ProgrammingError(
+                'Cannot render services without an assigned DB connection'
+            );
+        }
+
+        return "\n    import DirectorOverrideTemplate\n";
+    }
+
     protected function renderCustomExtensions()
     {
         // A hand-crafted command endpoint overrides use_agent
@@ -181,6 +209,11 @@ class IcingaService extends IcingaObject
      * @return string
      */
     public function renderUse_agent()
+    {
+        return '';
+    }
+
+    public function renderUse_var_overrides()
     {
         // @codingStandardsIgnoreEnd
         return '';

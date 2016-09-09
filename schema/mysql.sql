@@ -247,7 +247,7 @@ CREATE TABLE director_job (
   last_attempt_succeeded ENUM('y', 'n') DEFAULT NULL,
   ts_last_attempt DATETIME DEFAULT NULL,
   ts_last_error DATETIME DEFAULT NULL,
-  last_error_message TEXT,
+  last_error_message TEXT DEFAULT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY (job_name),
   CONSTRAINT director_job_period
@@ -351,7 +351,7 @@ CREATE TABLE icinga_command_field (
 
 CREATE TABLE icinga_command_var (
   command_id INT(10) UNSIGNED NOT NULL,
-  varname VARCHAR(255) NOT NULL,
+  varname VARCHAR(255) NOT NULL COLLATE utf8_bin,
   varvalue TEXT DEFAULT NULL,
   format ENUM('string', 'expression', 'json') NOT NULL DEFAULT 'string',
   PRIMARY KEY (command_id, varname),
@@ -516,7 +516,7 @@ CREATE TABLE icinga_host_field (
 
 CREATE TABLE icinga_host_var (
   host_id INT(10) UNSIGNED NOT NULL,
-  varname VARCHAR(255) NOT NULL,
+  varname VARCHAR(255) NOT NULL COLLATE utf8_bin,
   varvalue TEXT DEFAULT NULL,
   format enum ('string', 'json', 'expression'), -- immer string vorerst
   PRIMARY KEY (host_id, varname),
@@ -557,6 +557,7 @@ CREATE TABLE icinga_service (
   icon_image VARCHAR(255) DEFAULT NULL,
   icon_image_alt VARCHAR(255) DEFAULT NULL,
   use_agent ENUM('y', 'n') DEFAULT NULL,
+  use_var_overrides ENUM('y', 'n') DEFAULT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY object_key (object_name, host_id),
   CONSTRAINT icinga_service_host
@@ -611,7 +612,7 @@ CREATE TABLE icinga_service_inheritance (
 
 CREATE TABLE icinga_service_var (
   service_id INT(10) UNSIGNED NOT NULL,
-  varname VARCHAR(255) NOT NULL,
+  varname VARCHAR(255) NOT NULL COLLATE utf8_bin,
   varvalue TEXT DEFAULT NULL,
   format enum ('string', 'json', 'expression'),
   PRIMARY KEY (service_id, varname),
@@ -698,6 +699,19 @@ CREATE TABLE icinga_hostgroup_inheritance (
     ON DELETE RESTRICT
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE icinga_hostgroup_assignment (
+  id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  hostgroup_id INT(10) UNSIGNED NOT NULL,
+  filter_string TEXT NOT NULL,
+  assign_type ENUM('assign', 'ignore') NOT NULL DEFAULT 'assign',
+  PRIMARY KEY (id),
+  CONSTRAINT icinga_hostgroup_assignment
+  FOREIGN KEY hostgroup (hostgroup_id)
+  REFERENCES icinga_hostgroup (id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE=InnoDB;
 
 CREATE TABLE icinga_servicegroup (
   id INT(10) UNSIGNED AUTO_INCREMENT NOT NULL,
@@ -859,7 +873,7 @@ CREATE TABLE icinga_user_types_set (
 
 CREATE TABLE icinga_user_var (
   user_id INT(10) UNSIGNED NOT NULL,
-  varname VARCHAR(255) NOT NULL,
+  varname VARCHAR(255) NOT NULL COLLATE utf8_bin,
   varvalue TEXT DEFAULT NULL,
   format ENUM('string', 'json', 'expression') NOT NULL DEFAULT 'string',
   PRIMARY KEY (user_id, varname),
@@ -993,7 +1007,7 @@ CREATE TABLE icinga_notification (
 
 CREATE TABLE icinga_notification_var (
   notification_id INT(10) UNSIGNED NOT NULL,
-  varname VARCHAR(255) NOT NULL,
+  varname VARCHAR(255) NOT NULL COLLATE utf8_bin,
   varvalue TEXT DEFAULT NULL,
   format enum ('string', 'json', 'expression'),
   PRIMARY KEY (notification_id, varname),
@@ -1264,7 +1278,7 @@ CREATE TABLE sync_rule (
     'pending-changes',
     'failing'
   ) NOT NULL DEFAULT 'unknown',
-  last_error_message VARCHAR(255) DEFAULT NULL,
+  last_error_message TEXT DEFAULT NULL,
   last_attempt DATETIME DEFAULT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -1312,4 +1326,4 @@ CREATE TABLE sync_run (
 
 INSERT INTO director_schema_migration
   SET migration_time = NOW(),
-      schema_version = 104;
+      schema_version = 109;
