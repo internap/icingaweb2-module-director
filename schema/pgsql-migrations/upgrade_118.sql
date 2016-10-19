@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 CREATE TABLE director_dictionary (
   id serial,
   dictionary_name character varying(255) NOT NULL,
@@ -37,109 +36,7 @@ CREATE TABLE director_dictionary_field_setting (
     ON DELETE CASCADE
     ON UPDATE CASCADE
  );
-=======
-UPDATE icinga_host_var
-  SET varvalue = 'false',
-       format = 'json'
-  WHERE varvalue = 'n'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
-
-UPDATE icinga_host_var
-  SET varvalue = 'true',
-       format = 'json'
-  WHERE varvalue = 'y'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
-
-UPDATE icinga_service_var
-  SET varvalue = 'false',
-       format = 'json'
-  WHERE varvalue = 'n'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
-
-UPDATE icinga_service_var
-  SET varvalue = 'true',
-       format = 'json'
-  WHERE varvalue = 'y'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
-
-
-UPDATE icinga_command_var
-  SET varvalue = 'false',
-       format = 'json'
-  WHERE varvalue = 'n'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
-
-UPDATE icinga_command_var
-  SET varvalue = 'true',
-       format = 'json'
-  WHERE varvalue = 'y'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
-
-UPDATE icinga_user_var
-  SET varvalue = 'false',
-       format = 'json'
-  WHERE varvalue = 'n'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
-
-UPDATE icinga_user_var
-  SET varvalue = 'true',
-       format = 'json'
-  WHERE varvalue = 'y'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
-
-UPDATE icinga_notification_var
-  SET varvalue = 'false',
-       format = 'json'
-  WHERE varvalue = 'n'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
-
-UPDATE icinga_notification_var
-  SET varvalue = 'true',
-       format = 'json'
-  WHERE varvalue = 'y'
-    AND varname IN (
-      SELECT DISTINCT varname
-        FROM director_datafield
-       WHERE datatype LIKE '%DataTypeBoolean'
-    );
->>>>>>> production
 
 INSERT INTO director_schema_migration
   (schema_version, migration_time)
-  VALUES (110, NOW());
+  VALUES (118, NOW());
