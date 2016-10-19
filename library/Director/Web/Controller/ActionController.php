@@ -90,6 +90,17 @@ abstract class ActionController extends Controller
         $this->sendJson((object) array('error' => $message));
     }
 
+    protected function singleTab($label)
+    {
+        return $this->view->tabs = Widget::create('tabs')->add(
+            'tab',
+            array(
+                'label' => $label,
+                'url'   => $this->getRequest()->getUrl()
+            )
+        )->activate('tab');
+    }
+
     protected function setConfigTabs()
     {
         $this->view->tabs = Widget::create('tabs')->add(
@@ -117,16 +128,16 @@ abstract class ActionController extends Controller
     protected function setDataTabs()
     {
         $this->view->tabs = Widget::create('tabs')->add(
-            'datalist',
-            array(
-                'label' => $this->translate('Data lists'),
-                'url'   => 'director/data/lists'
-            )
-        )->add(
             'datafield',
             array(
                 'label' => $this->translate('Data fields'),
                 'url'   => 'director/data/fields'
+            )
+        )->add(
+            'datalist',
+            array(
+                'label' => $this->translate('Data lists'),
+                'url'   => 'director/data/lists'
             )
         )->add(
             'dictionary',

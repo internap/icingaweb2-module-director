@@ -124,14 +124,12 @@ class SyncPropertyForm extends DirectorObjectForm
         }
         */
 
-
         // TODO: we need modifier
-        $this->addElement('select', 'use_filter', array(
+        $this->addElement('YesNo', 'use_filter', array(
             'label'        => $this->translate('Set based on filter'),
             'ignore'       => true,
             'class'        => 'autosubmit',
             'required'     => true,
-            'multiOptions' => $this->enumBoolean()
         ));
 
         if ($this->hasBeenSent()) {
@@ -183,6 +181,7 @@ class SyncPropertyForm extends DirectorObjectForm
         $error = false;
         try {
             $data = $this->listSourceColumns();
+            natsort($data);
         } catch (Exception $e) {
             $data = array();
             $error = sprintf(
@@ -259,6 +258,9 @@ class SyncPropertyForm extends DirectorObjectForm
             if ($dummy->supportsGroups()) {
                 $special['groups']  = $this->translate('Group membership');
             }
+            if ($dummy->supportsRanges()) {
+                $special['ranges']  = $this->translate('Time ranges');
+            }
         }
 
         foreach ($dummy->listProperties() as $prop) {
@@ -276,6 +278,10 @@ class SyncPropertyForm extends DirectorObjectForm
             }
 
             $props[$prop] = $prop;
+        }
+
+        foreach ($dummy->listMultiRelations() as $prop) {
+            $props[$prop] = sprintf('%s (%s)', $prop, $this->translate('a list'));
         }
 
         ksort($props);

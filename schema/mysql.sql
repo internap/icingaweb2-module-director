@@ -105,7 +105,7 @@ CREATE TABLE director_datalist (
 
 CREATE TABLE director_datalist_entry (
   list_id INT(10) UNSIGNED NOT NULL,
-  entry_name VARCHAR(255) NOT NULL,
+  entry_name VARCHAR(255) COLLATE utf8_bin NOT NULL,
   entry_value TEXT DEFAULT NULL,
   format enum ('string', 'expression', 'json'),
   PRIMARY KEY (list_id, entry_name),
@@ -694,7 +694,7 @@ CREATE TABLE icinga_service_assignment (
 ) ENGINE=InnoDB;
 
 CREATE TABLE icinga_host_service (
-    host_id INT(10) UNSIGNED NOT NULL,
+  host_id INT(10) UNSIGNED NOT NULL,
   service_id INT(10) UNSIGNED NOT NULL,
   PRIMARY KEY (host_id, service_id),
   CONSTRAINT icinga_host_service_host
@@ -708,6 +708,76 @@ CREATE TABLE icinga_host_service (
     ON DELETE CASCADE
     ON UPDATE CASCADE
 ) ENGINE=InnoDB;
+
+CREATE TABLE icinga_service_set (
+  id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  object_name VARCHAR(128) NOT NULL,
+  object_type ENUM('object', 'template', 'external_object') NOT NULL,
+  host_id INT(10) UNSIGNED DEFAULT NULL,
+  description TEXT DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY object_key (object_name, host_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE icinga_service_set_service (
+  service_set_id INT(10) UNSIGNED NOT NULL,
+  service_id INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (service_set_id, service_id),
+  CONSTRAINT service_set_set
+    FOREIGN KEY service_set (service_set_id)
+    REFERENCES icinga_service_set (id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT service_set_service
+    FOREIGN KEY service (service_id)
+    REFERENCES icinga_service (id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE icinga_service_set_inheritance (
+  service_set_id INT(10) UNSIGNED NOT NULL,
+  parent_service_set_id INT(10) UNSIGNED NOT NULL,
+  weight MEDIUMINT UNSIGNED DEFAULT NULL,
+  PRIMARY KEY (service_set_id, parent_service_set_id),
+  UNIQUE KEY unique_order (service_set_id, weight),
+  CONSTRAINT icinga_service_set_inheritance_set
+  FOREIGN KEY host (service_set_id)
+  REFERENCES icinga_service_set (id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT icinga_service_set_inheritance_parent
+  FOREIGN KEY host (parent_service_set_id)
+  REFERENCES icinga_service_set (id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE icinga_service_set_assignment (
+  id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  service_set_id INT(10) UNSIGNED NOT NULL,
+  filter_string TEXT NOT NULL,
+  assign_type ENUM('assign', 'ignore') NOT NULL DEFAULT 'assign',
+  PRIMARY KEY (id),
+  CONSTRAINT icinga_service_set_assignment
+    FOREIGN KEY service_set (service_set_id)
+    REFERENCES icinga_service_set (id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE icinga_service_set_var (
+  service_set_id INT(10) UNSIGNED NOT NULL,
+  varname VARCHAR(255) NOT NULL COLLATE utf8_bin,
+  varvalue TEXT DEFAULT NULL,
+  format ENUM('string', 'expression', 'json') NOT NULL DEFAULT 'string',
+  PRIMARY KEY (service_set_id, varname),
+  CONSTRAINT icinga_service_set_var_service
+    FOREIGN KEY command (service_set_id)
+    REFERENCES icinga_service_set (id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE icinga_hostgroup (
   id INT(10) UNSIGNED AUTO_INCREMENT NOT NULL,
@@ -1058,6 +1128,23 @@ CREATE TABLE icinga_notification_var (
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+CREATE TABLE icinga_notification_field (
+  notification_id INT(10) UNSIGNED NOT NULL COMMENT 'Makes only sense for templates',
+  datafield_id INT(10) UNSIGNED NOT NULL,
+  is_required ENUM('y', 'n') NOT NULL,
+  PRIMARY KEY (notification_id, datafield_id),
+  CONSTRAINT icinga_notification_field_notification
+  FOREIGN KEY notification (notification_id)
+    REFERENCES icinga_notification (id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT icinga_notification_field_datafield
+  FOREIGN KEY datafield(datafield_id)
+  REFERENCES director_datafield (id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 CREATE TABLE icinga_notification_inheritance (
   notification_id INT(10) UNSIGNED NOT NULL,
   parent_notification_id INT(10) UNSIGNED NOT NULL,
@@ -1306,7 +1393,9 @@ CREATE TABLE sync_rule (
     'usergroup',
     'datalistEntry',
     'endpoint',
-    'zone'
+    'zone',
+    'timePeriod',
+    'serviceSet'
   ) NOT NULL,
   update_policy ENUM('merge', 'override', 'ignore') NOT NULL,
   purge_existing ENUM('y', 'n') NOT NULL DEFAULT 'n',
@@ -1365,4 +1454,4 @@ CREATE TABLE sync_run (
 
 INSERT INTO director_schema_migration
   SET migration_time = NOW(),
-      schema_version = 110;
+      schema_version = 117;

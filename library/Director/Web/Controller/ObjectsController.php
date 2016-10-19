@@ -2,6 +2,7 @@
 
 namespace Icinga\Module\Director\Web\Controller;
 
+use Icinga\Exception\NotFoundError;
 use Icinga\Data\Filter\Filter;
 use Icinga\Module\Director\Objects\IcingaObject;
 use Icinga\Module\Director\Web\Table\IcingaObjectTable;
@@ -11,6 +12,8 @@ abstract class ObjectsController extends ActionController
     protected $dummy;
 
     protected $isApified = true;
+
+    protected $multiEdit = array();
 
     protected $globalTypes = array(
         'ApiUser',
@@ -104,12 +107,10 @@ abstract class ObjectsController extends ActionController
             $addParams = array('type' => 'template');
             $this->getTabs()->activate('templates');
             $title = $this->translate('Icinga ' . ucfirst($ltype) . ' Templates');
-            $addTitle = $this->translate('Add %s template');
             $table->enforceFilter(Filter::expression('object_type', '=', 'template'));
         } else {
             $addParams = array('type' => 'object');
             $title = $this->translate('Icinga ' . ucfirst($ltype) . 's');
-            $addTitle = $this->translate('Add %s');
             if ($dummy->supportsImports()
                 && array_key_exists('object_type', $table->getColumns())
                 && ! in_array(ucfirst($type), $this->globalTypes)
@@ -121,7 +122,7 @@ abstract class ObjectsController extends ActionController
         $this->view->title = $title;
 
         $this->view->addLink = $this->view->qlink(
-            sprintf($addTitle, $this->translate(ucfirst($ltype))),
+            $this->translate('Add'),
             'director/' . $ltype .'/add',
             $addParams,
             array('class' => 'icon-plus')
@@ -194,6 +195,41 @@ abstract class ObjectsController extends ActionController
         $this->provideQuickSearch();
 
         $this->setViewScript('objects/table');
+    }
+
+    public function editAction()
+    {
+        $type = ucfirst($this->getType());
+
+        if (empty($this->multiEdit)) {
+            throw new NotFoundError('Cannot edit multiple "%s" instances', $type);
+        }
+        $formName = 'icinga' . $type;
+
+        $this->singleTab($this->translate('Multiple objects'));
+        $filter = Filter::fromQueryString($this->params->toString());
+        $dummy = $this->dummyObject();
+        $objects = array();
+        $db = $this->db();
+        foreach ($filter->filters() as $sub) {
+            foreach ($sub->filters() as $ex) {
+                if ($ex->isExpression() && $ex->getColumn() === 'name') {
+                    $name = $ex->getExpression();
+                    $objects[$name] = $dummy::load($name, $db);
+                }
+            }
+        }
+        $this->view->title = sprintf(
+            $this->translate('Modify %d objects'),
+            count($objects)
+        );
+
+        $this->view->form = $this->loadForm('IcingaMultiEdit')
+            ->setObjects($objects)
+            ->pickElementsFrom($this->loadForm($formName), $this->multiEdit)
+            ->handleRequest();
+
+        $this->setViewScript('objects/form');
     }
 
     public function templatesAction()

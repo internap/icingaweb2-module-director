@@ -7,6 +7,7 @@ use Icinga\Module\Director\IcingaConfig\IcingaConfig;
 use Icinga\Module\Director\Web\Controller\ActionController;
 use Icinga\Module\Director\Util;
 use Icinga\Module\Director\Objects\IcingaObject;
+use Exception;
 
 class ShowController extends ActionController
 {
@@ -74,21 +75,14 @@ class ShowController extends ActionController
         return $tabs;
     }
 
-    protected function getObjectConfig($object)
-    {
-        $config = new IcingaConfig($this->db());
-        $object->renderToConfig($config);
-        return $config;
-    }
-
     protected function newConfig($entry)
     {
-        return $this->getObjectConfig($this->newObject($entry));
+        return $this->newObject($entry)->toSingleIcingaConfig();
     }
 
     protected function oldConfig($entry)
     {
-        return $this->getObjectConfig($this->oldObject($entry));
+        return $this->oldObject($entry)->toSingleIcingaConfig();
     }
 
     protected function showDiff($entry)
@@ -243,10 +237,17 @@ class ShowController extends ActionController
     protected function createObject($type, $props)
     {
         $props = json_decode($props);
-        return IcingaObject::createByType($type, array(
-            'object_name' => $props->object_name,
-            'object_type' => $props->object_type,
-        ), $this->db())->setProperties((array) $props);
-        return IcingaObject::createByType($type, (array) $props, $this->db());
+        $newProps = array(
+            'object_name' => $props->object_name
+        );
+        if (property_exists($props, 'object_type')) {
+            $newProps['object_type'] = $props->object_type;
+        }
+
+        return IcingaObject::createByType(
+            $type,
+            $newProps,
+            $this->db()
+        )->setProperties((array) $props);
     }
 }

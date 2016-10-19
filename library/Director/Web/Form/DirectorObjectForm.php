@@ -3,6 +3,7 @@
 namespace Icinga\Module\Director\Web\Form;
 
 use Exception;
+use Icinga\Module\Director\Exception\NestingError;
 use Icinga\Authentication\Auth;
 use Icinga\Module\Director\IcingaConfig\StateFilterSet;
 use Icinga\Module\Director\IcingaConfig\TypeFilterSet;
@@ -14,6 +15,7 @@ abstract class DirectorObjectForm extends QuickForm
 {
     protected $db;
 
+    /** @var IcingaObject */
     protected $object;
 
     protected $objectName;
@@ -26,18 +28,30 @@ abstract class DirectorObjectForm extends QuickForm
 
     protected $displayGroups = array();
 
-    protected $resolvedImports = false;
+    protected $resolvedImports;
 
     protected $listUrl;
+
+    protected $preferredObjectType;
 
     private $allowsExperimental;
 
     private $api;
 
+    public function setPreferredObjectType($type)
+    {
+        $this->preferredObjectType = $type;
+        return $this;
+    }
+
     protected function object($values = array())
     {
         if ($this->object === null) {
             $class = $this->getObjectClassname();
+            if ($this->preferredObjectType && ! array_key_exists('object_type', $values)) {
+                $values['object_type'] = $this->preferredObjectType;
+            }
+
             $this->object = $class::create($values, $this->db);
             foreach ($this->getValues() as $key => $value) {
                 if ($this->object->hasProperty($key)) {
@@ -56,19 +70,19 @@ abstract class DirectorObjectForm extends QuickForm
 
     protected function assertResolvedImports()
     {
-        if ($this->resolvedImports) {
-            return $this;
+        if ($this->resolvedImports !== null) {
+            return $this->resolvedImports;
         }
 
-        $this->resolvedImports = true;
         $object = $this->object;
 
         if (! $object instanceof IcingaObject) {
-            return $this;
+            return $this->resolvedImports = false;
         }
         if (! $object->supportsImports()) {
-            return $this;
+            return $this->resolvedImports = false;
         }
+
         if ($this->hasBeenSent()) {
             if ($el = $this->getElement('imports')) {
                 $this->populate($this->getRequest()->getPost());
@@ -76,20 +90,30 @@ abstract class DirectorObjectForm extends QuickForm
             }
         }
 
-        $object->resolveUnresolvedRelatedProperties();
-        return $this;
+        try {
+            $object->templateResolver()->listResolvedParentIds();
+        } catch (NestingError $e) {
+            $this->addUniqueErrorMessage($e->getMessage());
+            return $this->resolvedImports = false;
+        } catch (Exception $e) {
+            $this->addException($e, 'imports');
+            return $this->resolvedImports = false;
+        }
+
+        return $this->resolvedImports = true;
     }
 
-    protected function isObject()
+    public function isObject()
     {
         return $this->getSentOrObjectValue('object_type') === 'object';
     }
 
-    protected function isTemplate()
+    public function isTemplate()
     {
         return $this->getSentOrObjectValue('object_type') === 'template';
     }
 
+    // TODO: move to a subform
     protected function handleRanges($object, & $values)
     {
         if (! $object->supportsRanges()) {
@@ -116,27 +140,6 @@ abstract class DirectorObjectForm extends QuickForm
         foreach ($object->ranges()->getRanges() as $key => $value) {
             $this->addRange($key, $value);
         }
-
-        /*
-        // TODO implement when new logic is there
-        $this->addElement('simpleNote', '_newrange_hint', array('label' => 'New range'));
-        $this->addElement('text', '_newrange_name', array(
-            'label' => 'Name'
-        ));
-        $this->addElement('text', '_newrange_value', array(
-            'label' => 'Value'
-        ));
-        */
-    }
-
-    protected function addToFieldsDisplayGroup($elements)
-    {
-        return $this->addElementsToGroup(
-            $elements,
-            'custom_fields',
-            50,
-            $this->translate('Custom properties')
-        );
     }
 
     protected function addToCheckExecutionDisplayGroup($elements)
@@ -149,17 +152,7 @@ abstract class DirectorObjectForm extends QuickForm
         );
     }
 
-    protected function addToCommandFieldsDisplayGroup($elements)
-    {
-        return $this->addElementsToGroup(
-            $elements,
-            'command_fields',
-            55,
-            $this->translate('Command-specific custom vars')
-        );
-    }
-
-    protected function addElementsToGroup($elements, $group, $order, $legend = null)
+    public function addElementsToGroup($elements, $group, $order, $legend = null)
     {
         if (! is_array($elements)) {
             $elements = array($elements);
@@ -206,8 +199,13 @@ abstract class DirectorObjectForm extends QuickForm
 
     protected function handleProperties($object, & $values)
     {
+        $resolve = $this->assertResolvedImports();
         if ($this->hasBeenSent()) {
             foreach ($values as $key => $value) {
+                if ($key === 'imports') {
+                    continue;
+                }
+
                 try {
                     $object->set($key, $value);
                     if ($object instanceof IcingaObject) {
@@ -215,7 +213,7 @@ abstract class DirectorObjectForm extends QuickForm
                     }
 
                 } catch (Exception $e) {
-                    $this->getElement($key)->addError($e->getMessage());
+                    $this->addException($e, $key);
                 }
             }
         }
@@ -232,19 +230,13 @@ abstract class DirectorObjectForm extends QuickForm
             unset($props['vars']);
         }
 
-        foreach ($props as $k => $v) {
-            if (is_bool($v)) {
-                $props[$k] = $v ? 'y' : 'n';
-            }
-        }
-
         $this->setDefaults($props);
 
         if (! $object instanceof IcingaObject) {
             return $this;
         }
 
-        if ($object->supportsImports()) {
+        if ($resolve) {
             $inherited = $object->getInheritedProperties();
             $origins   = $object->getOriginsProperties();
         } else {
@@ -253,213 +245,24 @@ abstract class DirectorObjectForm extends QuickForm
         }
 
         foreach ($props as $k => $v) {
+            $this->setElementValue($k, $v);
             if ($k !== 'object_name' && property_exists($inherited, $k)) {
-                $this->setElementValue($k, $v, $inherited->$k, $origins->$k);
-                if ($el = $this->getElement($k)) {
-                    $el->setRequired(false);
+                $el = $this->getElement($k);
+                if ($el && $resolve) {
+                    $this->setInheritedValue($el, $inherited->$k, $origins->$k);
                 }
-            } else {
-                $this->setElementValue($k, $v);
             }
         }
     }
 
     protected function handleCustomVars($object, & $values)
     {
-        if (! $object->supportsCustomVars()) {
-            return;
-        }
-
-        $fields   = $object->getResolvedFields();
-        $inherits = $object->getInheritedVars();
-        $origins  = $object->getOriginsVars();
-        if ($object->hasCheckCommand()) {
-            $checkCommand = $object->getCheckCommand();
-            $checkFields = $checkCommand->getResolvedFields();
-            $checkVars   = $checkCommand->getResolvedVars();
-        } else {
-            $checkFields = (object) array();
-        }
-
-        if ($this->hasBeenSent()) {
-            $vars = array();
-            $handled = array();
-            $newvar = array(
-                'type'  => 'string',
-                'name'  => null,
-                'value' => null,
-            );
-
-            foreach ($values as $key => $value) {
-
-                if (substr($key, 0, 4) === 'var_') {
-                    if (substr($key, -6) === '___ADD') {
-                        continue;
-                    }
-
-                    $mykey = substr($key, 4);
-
-                    // Get value through form element.
-                    // TODO: reorder the related code. Create elements once
-                    foreach (array($fields, $checkFields) as $fieldSet) {
-                        if (property_exists($fieldSet, $mykey)) {
-                            $field = $fieldSet->$mykey;
-                            $datafield = DirectorDatafield::load($field->datafield_id, $this->getDb());
-                            $name = 'var_' . $datafield->varname;
-                            $className = $datafield->datatype;
-
-                            if (class_exists($className)) {
-                                $datatype = new $className;
-                                $datatype->setSettings($datafield->getSettings());
-                                $el = $datatype->getFormElement($name, $this);
-                            }
-
-                            $value = $el->setValue($value)->getValue();
-                        }
-                    }
-
-                    if (property_exists($fields, $mykey) && $fields->$mykey->format === 'json') {
-                        $value = json_decode($value);
-                    }
-
-                    if (property_exists($checkFields, $mykey) && $checkFields->$mykey->format === 'json') {
-                        $value = json_decode($value);
-                    }
-
-                    $vars[$mykey] = $value;
-                    $handled[$key] = true;
-                }
-/*
-                if (substr($key, 0, 8) === '_newvar_') {
-                    $newvar[substr($key, 8)] = $value;
-                    $handled[$key] = true;
-                }
-*/
+        if ($this->assertResolvedImports()) {
+            $loader = new IcingaObjectFieldLoader($object);
+            $loader->addFieldsToForm($this);
+            if ($values) {
+                $loader->setValues($values, 'var_');
             }
-
-            foreach ($vars as $k => $v) {
-                if ($v === '' || $v === null) {
-                    unset($object->vars()->$k);
-                } else {
-                    $object->vars()->$k = $v;
-                }
-            }
-
-            if ($newvar['name'] && $newvar['value']) {
-                $object->vars()->{$newvar['name']} = $newvar['value'];
-            }
-
-            foreach ($handled as $key) {
-                unset($values[$key]);
-            }
-        }
-
-        $vars = $object->getVars();
-
-        foreach ($fields as $field) {
-            $varname = $field->varname;
-
-            // Get value from the related varname if set:
-            if (property_exists($vars, $varname)) {
-                $value = $vars->$varname;
-            } else {
-                $value = null;
-            }
-
-            if (property_exists($inherits, $varname)) {
-                $inheritedValue = $inherits->$varname;
-                $inheritFrom = $origins->$varname;
-                if ($inheritFrom === $object->object_name) {
-                    $inherited = false;
-                } else {
-                    $inherited = true;
-                }
-            } else {
-                $inheritedValue = null;
-                $inheritFrom = false;
-                $inherited = false;
-            }
-
-            $this->addField($field, $value, $inheritedValue, $inheritFrom);
-        }
-
-        foreach ($checkFields as $field) {
-            $varname = $field->varname;
-            if (property_exists($vars, $varname)) {
-                $value = $vars->$varname;
-            } else {
-                $value = null;
-            }
-            if (property_exists($checkVars, $varname)) {
-                $inheritedValue = $checkVars->$varname;
-                $inheritFrom = $this->translate('check command');
-            } else {
-                $inheritedValue = null;
-                $inheritFrom = false;
-            }
-
-            // Command vars are overridden at object level:
-            if (property_exists($inherits, $varname)) {
-                $inheritedValue = $inherits->$varname;
-                $inheritFrom = $origins->$varname;
-                if ($inheritFrom === $object->object_name) {
-                    $inherited = false;
-                } else {
-                    $inherited = true;
-                }
-            }
-
-            $this->addCommandField($field, $value, $inheritedValue, $inheritFrom);
-            if ($inheritedValue !== null) {
-                $this->getElement('var_' . $field->varname)->setRequired(false);
-            }
-        }
-
-        // TODO Define whether admins are allowed to set those
-        /*
-        // Additional vars
-        foreach ($vars as $key => $value) {
-            // Did we already create a field for this var? Then skip it:
-            if (array_key_exists($key, $fields)) {
-                continue;
-            }
-            if (array_key_exists($key, $checkFields)) {
-                continue;
-            }
-
-            // TODO: handle structured vars
-            if (! is_string($value)) {
-                continue;
-            }
-
-            // Show inheritance information in case we inherited this var:
-            if (isset($inherited->$key)) {
-                $this->addCustomVar($key, $value, $inherited->$key, $origins->$key);
-            } else {
-                $this->addCustomVar($key, $value);
-            }
-
-        }
-        */
-
-        if (/* TODO: add free var */false && $object->isTemplate()) {
-            $this->addElement('text', '_newvar_name', array(
-                'label' => 'Add var'
-            ));
-            $this->addElement('text', '_newvar_value', array(
-                'label' => 'Value'
-            ));
-            $this->addElement('select', '_newvar_format', array(
-                'label'        => 'Type',
-                'multiOptions' => array('string' => $this->translate('String'))
-            ));
-            $this->addToFieldsDisplayGroup(
-                array(
-                    '_newvar_name',
-                    '_newvar_value',
-                    '_newvar_format',
-                )
-            );
         }
     }
 
@@ -521,71 +324,6 @@ abstract class DirectorObjectForm extends QuickForm
         return $this;
     }
 
-    // TODO: unify addField and addCommandField. Do they need to differ?
-    protected function addField($field, $value = null, $inherited = null, $inheritedFrom = null)
-    {
-        $datafield = DirectorDatafield::load($field->datafield_id, $this->getDb());
-        $name = 'var_' . $datafield->varname;
-        $className = $datafield->datatype;
-
-        if (! class_exists($className)) {
-            $this->addElement('text', $name, array('disabled' => 'disabled'));
-            $el = $this->getElement($name);
-            $el->addError(sprintf('Form element could not be created, %s is missing', $className));
-            $this->addToFieldsDisplayGroup($el);
-            return $el;
-        }
-
-        $datatype = new $className;
-        $datatype->setSettings($datafield->getSettings());
-        $el = $datatype->getFormElement($name, $this);
-
-        $el->setLabel($datafield->caption);
-        $el->setDescription($datafield->description);
-
-        if ($field->is_required === 'y' && ! $this->isTemplate() && $inherited === null) {
-            $el->setRequired(true);
-        }
-
-        $this->addElement($el);
-        $this->setElementValue($name, $value, $inherited, $inheritedFrom);
-        $this->addToFieldsDisplayGroup($el);
-
-        return $el;
-    }
-
-    protected function addCommandField($field, $value = null, $inherited = null, $inheritedFrom = null)
-    {
-        $datafield = DirectorDatafield::load($field->datafield_id, $this->getDb());
-        $name = 'var_' . $datafield->varname;
-        $className = $datafield->datatype;
-
-        if (! class_exists($className)) {
-            $this->addElement('text', $name, array('disabled' => 'disabled'));
-            $el = $this->getElement($name);
-            $el->addError(sprintf('Form element could not be created, %s is missing', $className));
-            $this->addToCommandFieldsDisplayGroup($el);
-            return $el;
-        }
-
-        $datatype = new $className;
-        $datatype->setSettings($datafield->getSettings());
-        $el = $datatype->getFormElement($name, $this);
-
-        $el->setLabel($datafield->caption);
-        $el->setDescription($datafield->description);
-
-        if ($field->is_required === 'y' && ! $this->isTemplate() && $inherited === null) {
-            $el->setRequired(true);
-        }
-
-        $this->addElement($el);
-        $this->setElementValue($name, $value, $inherited, $inheritedFrom);
-        $this->addToCommandFieldsDisplayGroup($el);
-
-        return $el;
-    }
-
     protected function setSentValue($name, $value)
     {
         if ($this->hasBeenSent()) {
@@ -598,18 +336,24 @@ abstract class DirectorObjectForm extends QuickForm
         return $this->setElementValue($name, $value);
     }
 
-    protected function setElementValue($name, $value = null, $inherited = null, $inheritedFrom = null)
+    public function setElementValue($name, $value = null)
     {
         $el = $this->getElement($name);
         if (! $el) {
+            // Not showing an error, as most object properties do not exist. Not
+            // yet, because IMO this should be checked.
+            // $this->addError(sprintf($this->translate('Form element "%s" does not exist'), $name));
             return;
         }
 
         if ($value !== null) {
             $el->setValue($value);
         }
+    }
 
-        if ($inherited === null || empty($inherited)) {
+    public function setInheritedValue($el, $inherited, $inheritedFrom)
+    {
+        if ($inherited === null) {
             return;
         }
 
@@ -630,6 +374,9 @@ abstract class DirectorObjectForm extends QuickForm
                 $el->setAttrib('placeholder', $inherited . sprintf($txtInherited, $inheritedFrom));
             }
         }
+
+        // We inherited a value, so no need to require the field
+        $el->setRequired(false);
     }
 
     public function setListUrl($url)
@@ -676,25 +423,12 @@ abstract class DirectorObjectForm extends QuickForm
 
     protected function addBoolean($key, $options, $default = null)
     {
-        $map = array(
-            false => 'n',
-            true  => 'y',
-            'n'   => 'n',
-            'y'   => 'y',
-        );
-        if ($default !== null) {
-            $options['multiOptions'] = $this->enumBoolean();
+        if ($default === null) {
+            return $this->addElement('OptionalYesNo', $key, $options);
         } else {
-            $options['multiOptions'] = $this->optionalEnum($this->enumBoolean());
+            $this->addElement('YesNo', $key, $options);
+            return $this->getElement($key)->setValue($default);
         }
-
-        $res = $this->addElement('select', $key, $options);
-
-        if ($default !== null) {
-            $this->getElement($key)->setValue($map[$default]);
-        }
-
-        return $res;
     }
 
     protected function optionalBoolean($key, $label, $description)
@@ -703,14 +437,6 @@ abstract class DirectorObjectForm extends QuickForm
             'label'       => $label,
             'description' => $description
         ));
-    }
-
-    protected function enumBoolean()
-    {
-        return array(
-            'y'  => $this->translate('Yes'),
-            'n'  => $this->translate('No'),
-        );
     }
 
     public function hasElement($name)
@@ -732,7 +458,7 @@ abstract class DirectorObjectForm extends QuickForm
     {
         $this->object = $object;
         if ($this->db === null) {
-            $this->setDb($db);
+            $this->setDb($object->getConnection());
         }
 
         return $this;
@@ -932,6 +658,13 @@ abstract class DirectorObjectForm extends QuickForm
         return $this->getSentValue($name) === $this->getElement($name)->getLabel();
     }
 
+    protected function abortDeletion()
+    {
+        if ($this->hasDeleteButton()) {
+            $this->setSentValue($this->deleteButtonName, 'ABORTED');
+        }
+    }
+
     public function getSentOrResolvedObjectValue($name, $default = null)
     {
         return $this->getSentOrObjectValue($name, $default, true);
@@ -965,8 +698,11 @@ abstract class DirectorObjectForm extends QuickForm
 
         if ($object->hasProperty($name)) {
             if ($resolved && $object->supportsImports()) {
-                $this->assertResolvedImports();
-                $objectProperty = $object->getResolvedProperty($name);
+                if ($this->assertResolvedImports()) {
+                    $objectProperty = $object->getResolvedProperty($name);
+                } else {
+                    $objectProperty = $object->$name;
+                }
             } else {
                 $objectProperty = $object->$name;
             }
@@ -985,6 +721,15 @@ abstract class DirectorObjectForm extends QuickForm
         return $default;
     }
 
+    protected function addUniqueErrorMessage($msg)
+    {
+        if (! in_array($msg, $this->getErrorMessages())) {
+            $this->addErrorMessage($msg);
+        }
+
+        return $this;
+    }
+
     public function loadObject($id)
     {
         $class = $this->getObjectClassname();
@@ -996,15 +741,6 @@ abstract class DirectorObjectForm extends QuickForm
         }
 
         return $this;
-    }
-
-    protected function addCustomVar($key, $value, $inherited = null, $inheritedFrom = null)
-    {
-        $label = 'vars.' . $key;
-        $key = 'var_' . $key;
-        $this->addElement('text', $key, array('label' => $label));
-        $this->setElementValue($key, $value, $inherited, $inheritedFrom);
-        $this->addToFieldsDisplayGroup($key);
     }
 
     protected function addRange($key, $range)
@@ -1041,6 +777,11 @@ abstract class DirectorObjectForm extends QuickForm
     {
         if (!$this->isNew()) {
             return;
+        }
+
+        if ($this->preferredObjectType) {
+            $this->addHidden('object_type', $this->preferredObjectType);
+            return $this;
         }
 
         $object = $this->object();
@@ -1114,7 +855,7 @@ abstract class DirectorObjectForm extends QuickForm
         return $this;
     }
 
-    protected function addImportsElement()
+    protected function addImportsElement($required = null)
     {
         $enum = $this->enumAllowedTemplates();
         if (empty($enum)) {
@@ -1128,7 +869,7 @@ abstract class DirectorObjectForm extends QuickForm
                 . ' matters when importing properties from multiple templates: last one'
                 . ' wins'
             ),
-            'required'     => !$this->isTemplate(),
+            'required'     => ($required !== null ? $required : !$this->isTemplate()),
             'multiOptions' => $this->optionallyAddFromEnum($enum),
             'sorted'       => true,
             'class'        => 'autosubmit'

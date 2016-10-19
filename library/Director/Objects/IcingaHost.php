@@ -110,6 +110,7 @@ class IcingaHost extends IcingaObject
         }
 
         $hostVars = array();
+
         if ($connection !== null) {
             foreach ($connection->fetchDistinctHostVars() as $var) {
                 if ($var->datatype) {
@@ -158,12 +159,21 @@ class IcingaHost extends IcingaObject
     public function renderToConfig(IcingaConfig $config)
     {
         parent::renderToConfig($config);
-        $this->renderAgentZoneAndEndpoint($config);
+
+        // TODO: We might alternatively let the whole config fail in case we have
+        //       used use_agent together with a legacy config
+        if (! $config->isLegacy()) {
+            $this->renderAgentZoneAndEndpoint($config);
+        }
     }
 
     public function renderAgentZoneAndEndpoint(IcingaConfig $config = null)
     {
         if (!$this->isObject()) {
+            return;
+        }
+
+        if ($this->getRenderingZone($config) === self::RESOLVE_ERROR) {
             return;
         }
 

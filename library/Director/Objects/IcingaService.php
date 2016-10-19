@@ -3,6 +3,7 @@
 namespace Icinga\Module\Director\Objects;
 
 use Icinga\Exception\ProgrammingError;
+use Icinga\Module\Director\IcingaConfig\IcingaConfig;
 use Icinga\Module\Director\IcingaConfig\IcingaConfigHelper as c;
 
 class IcingaService extends IcingaObject
@@ -76,6 +77,8 @@ class IcingaService extends IcingaObject
     protected $supportsImports = true;
 
     protected $supportsApplyRules = true;
+
+    protected $supportsSets = true;
 
     protected $keyName = array('host_id', 'object_name');
 
@@ -231,5 +234,22 @@ class IcingaService extends IcingaObject
         } else {
             return parent::getOnDeleteUrl();
         }
+    }
+
+    public function getRenderingZone(IcingaConfig $config = null)
+    {
+        if ($this->prefersGlobalZone()) {
+            return $this->connection->getDefaultGlobalZoneName();
+        }
+
+        $zone = parent::getRenderingZone($config);
+
+        // if bound to a host, and zone is fallback to master
+        if ($this->host_id !== null && $zone === $this->connection->getMasterZoneName()) {
+            /** @var IcingaHost $host */
+            $host = $this->getRelatedObject('host', $this->host_id);
+            return $host->getRenderingZone($config);
+        }
+        return $zone;
     }
 }
