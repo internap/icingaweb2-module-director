@@ -32,6 +32,47 @@ class DictionaryTest extends BaseTestCase
         $this->assertFalse($this->dictionaryInstance->hasErrors());
     }
 
+    public function testDictionaryWithMissingKey() {
+        $this->dictionaryInstance->setDefaultValue([
+            'key_one' => 0,
+            'key_two' => '',
+            'key_three' => ''
+        ]);
+        $this->dictionaryInstance->setFieldSettingsMap([
+            'key_one' => ['is_required' => false],
+            'key_two' => ['is_required' => false],
+            'key_three' => ['is_required' => false],
+        ]);
+
+        $this->dictionaryInstance->isValid([
+            'key_one' => 42,
+            'key_two' => 'foobar'
+        ]);
+
+        $this->assertFalse($this->dictionaryInstance->hasErrors());
+    }
+
+    public function testDictionaryWithMissingSubkey() {
+        $this->dictionaryInstance->setDefaultValue([
+            'key_one' => 0,
+            'key_two' => [
+                'sub_key_one' => ''
+            ]
+        ]);
+        $this->dictionaryInstance->setFieldSettingsMap([
+            'key_one' => ['is_required' => true],
+            'key_two' => ['is_required' => true],
+            'key_two.sub_key_one' => ['is_required' => false],
+        ]);
+
+        $this->dictionaryInstance->isValid([
+            'key_one' => 0,
+            'key_two' => []
+        ]);
+
+        $this->assertFalse($this->dictionaryInstance->hasErrors());
+    }
+
     public function testDictionaryWithKeyTypeMismatch() {
         $this->dictionaryInstance->setDefaultValue([
             'key_one' => 0
