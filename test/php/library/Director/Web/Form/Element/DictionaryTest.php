@@ -49,10 +49,7 @@ class DictionaryTest extends BaseTestCase
             'key_two' => 'foobar'
         ]);
 
-        $this->assertTrue($this->dictionaryInstance->hasErrors());
-        $errors = $this->dictionaryInstance->getMessages();
-        $this->assertEquals(1, count($errors));
-        $this->assertEquals('Key \'key_three\' is missing', $errors[0]);
+        $this->assertFalse($this->dictionaryInstance->hasErrors());
     }
 
     public function testDictionaryWithMissingSubkey() {
@@ -73,10 +70,7 @@ class DictionaryTest extends BaseTestCase
             'key_two' => []
         ]);
 
-        $this->assertTrue($this->dictionaryInstance->hasErrors());
-        $errors = $this->dictionaryInstance->getMessages();
-        $this->assertEquals(1, count($errors));
-        $this->assertEquals('Key \'key_two.sub_key_one\' is missing', $errors[0]);
+        $this->assertFalse($this->dictionaryInstance->hasErrors());
     }
 
     public function testDictionaryWithKeyTypeMismatch() {

@@ -16,7 +16,7 @@ class Dictionary extends FormElement
         if (is_string($value)) {
             $value = json_decode($value, true);
         }
-        return $this->validateNode($this->structure, $value);
+        return $this->validateNode($this->structure, $this->applyOnStructure($value));
     }
 
     protected function validateNode($structure, $value, $keyPrefix = '')
@@ -26,11 +26,6 @@ class Dictionary extends FormElement
         }
         foreach ($structure as $key => $node) {
             $fullKey = $keyPrefix . $key;
-
-            if ( ! key_exists($key, $value)) {
-                $this->addError(sprintf("Key '%s' is missing", $fullKey));
-                return false;
-            }
 
             if (is_array($value[$key]) && ! $this->validateNode($node, $value[$key], $fullKey . '.')) {
                 return false;
@@ -79,7 +74,7 @@ class Dictionary extends FormElement
         if ($value instanceof \stdClass) {
             $value = json_decode(json_encode($value), true);
         }
-        return parent::setValue($value);
+        return parent::setValue($this->applyOnStructure($value));
     }
 
     protected function _getErrorMessages()
@@ -106,6 +101,10 @@ class Dictionary extends FormElement
         }
 
         return $value;
+    }
+
+    private function applyOnStructure($value) {
+        return array_replace_recursive($this->structure, $value);
     }
 }
 
